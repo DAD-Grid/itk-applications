@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
   if(argc < 2)
     {
     std::cerr << "Usage: ";
-    std::cerr << argv[0] << " inputImageFile [rows] [cols]" << std::endl;
+    std::cerr << argv[0] << " inputImageFile pathToFolder [rows] [cols]" << std::endl;
     return EXIT_FAILURE;
     }
 
@@ -35,11 +35,17 @@ int main(int argc, char *argv[])
 
   int rows = 10;
   int cols = 10;
-  if (argc > 2) {
-    rows = atoi(argv[2]);
+  if (argc < 3) {
+    std::cerr << "too few arguments" << std::endl;
+    return EXIT_FAILURE;
   }
+  std::string pathToFolder(argv[2]);
+
   if (argc > 3) {
-    cols = atoi(argv[3]);
+    rows = atoi(argv[3]);
+  }
+  if (argc > 4) {
+    cols = atoi(argv[4]);
   }
 
   ImageType::IndexType start;
@@ -78,7 +84,9 @@ int main(int argc, char *argv[])
       std::getline(ss, format);
 
       std::stringstream ss2;
-      ss2 << name << "_" << i << "_" << j << "." << format;
+      if(pathToFolder[pathToFolder.size()-1] != '/')
+        pathToFolder += '/';
+      ss2 << pathToFolder << name << "_" << i << "_" << j << "." << format;
       std::string filename_out;
       ss2 >> filename_out;
       std::cout << "output file: " << filename_out << std::endl;
