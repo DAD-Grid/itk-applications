@@ -7,3 +7,6 @@ include(${ITK_USE_FILE})
 
 add_executable(mergeImage mergeImage.cxx)
 target_link_libraries(mergeImage ${ITK_LIBRARIES})
+
+add_executable(createDestImage createDestinationImage.cxx)
+target_link_libraries(createDestImage ${ITK_LIBRARIES})
