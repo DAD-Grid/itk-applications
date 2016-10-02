@@ -1,7 +1,9 @@
+#include "itkRGBPixel.h"
 #include "itkImage.h"
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkPasteImageFilter.h"
+#include "itkVectorCastImageFilter.h"
 
 #include <iostream>
 #include <string>
@@ -10,22 +12,28 @@
 #include <cstdlib>
 #include <fstream>
 
-typedef itk::Image<itk::RGBPixel<unsigned char>, 2>   ImageType;
-typedef itk::ImageFileReader<ImageType>               ReaderType;
-typedef itk::PasteImageFilter <ImageType, ImageType > PasteImageFilterType;
-typedef itk::ImageFileWriter< ImageType >             WriterType;
+typedef itk::RGBPixel< float >                        PixelType;
+typedef itk::Image< PixelType, 2 >                    InputImageType;
+typedef itk::ImageFileReader<InputImageType>               ReaderType;
+typedef itk::PasteImageFilter <InputImageType, InputImageType > PasteImageFilterType;
+
+typedef itk::RGBPixel< unsigned char >                WritePixelType;
+typedef itk::Image< WritePixelType, 2 >               WriteImageType;
+typedef itk::ImageFileWriter< WriteImageType >        WriterType;
+typedef itk::VectorCastImageFilter<
+                    InputImageType, WriteImageType >  CasterType;
 
 using namespace std;
 
-static void CreateDestImage(ImageType::Pointer image, unsigned int NumRows, unsigned int NumCols)
+static void CreateDestImage(InputImageType::Pointer image, unsigned int NumRows, unsigned int NumCols)
 {
   // Create an image with 2 connected components
-  ImageType::RegionType region;
-  ImageType::IndexType start;
+  InputImageType::RegionType region;
+  InputImageType::IndexType start;
   start[0] = 0;
   start[1] = 0;
 
-  ImageType::SizeType size;
+  InputImageType::SizeType size;
   size[0] = NumRows;
   size[1] = NumCols;
   std::cout << "size " << size[0] << " " << size[1] << std::endl;
@@ -49,16 +57,17 @@ int main(int argc, char *argv[])
   int numCols = atoi(argv[4]);
   std::string folderPath = argv[5];
 
-  ImageType::Pointer destImg = ImageType::New();
+  InputImageType::Pointer destImg = InputImageType::New();
   CreateDestImage(destImg, height, width);
- 
-  
-  ImageType::SizeType destSize = destImg->GetLargestPossibleRegion().GetSize();
+
+
+  InputImageType::SizeType destSize = destImg->GetLargestPossibleRegion().GetSize();
 
   std::string comando = "ls " + folderPath + " > nombresArchivos.txt";
- std::cout << comando << std::endl; 
+ std::cout << comando << std::endl;
   system(comando.c_str());
 
+  PasteImageFilterType::Pointer pasteFilter = PasteImageFilterType::New ();
   std::ifstream in("nombresArchivos.txt");
   std::string fileName;
   while(in >> fileName) {
@@ -69,7 +78,7 @@ int main(int argc, char *argv[])
     std::getline(ss, namef, '.');
     std::string formatF;
     std::getline(ss, formatF);
-    
+
     std::stringstream ss2(namef);
     std::string str;
     std::vector<std::string> nameArr;
@@ -83,7 +92,7 @@ int main(int argc, char *argv[])
 
     int singleImageHeight =  (int)(destSize[0]) / numRows;
     int singleImageWith = (int)(destSize[1]) / numCols;
-    ImageType::IndexType destinationIndex;
+    InputImageType::IndexType destinationIndex;
     destinationIndex[0] = row*singleImageHeight;
     destinationIndex[1] = col*singleImageWith;
 
@@ -94,9 +103,9 @@ int main(int argc, char *argv[])
     reader2->SetFileName(folderPath + fileName);
     reader2->Update();
 
-    ImageType::Pointer srcImage = reader2->GetOutput();
-    
-    PasteImageFilterType::Pointer pasteFilter = PasteImageFilterType::New ();
+    InputImageType::Pointer srcImage = reader2->GetOutput();
+
+
     pasteFilter->SetDestinationImage(destImg);
     pasteFilter->SetSourceImage(srcImage);
     pasteFilter->SetSourceRegion(srcImage->GetLargestPossibleRegion());
@@ -106,6 +115,7 @@ int main(int argc, char *argv[])
 
   }
 
+  CasterType::Pointer caster = CasterType::New();
   WriterType::Pointer writer = WriterType::New();
 
   std::string name = "destImage";
@@ -119,7 +129,8 @@ int main(int argc, char *argv[])
   ss3 >> filename_out;
   std::cout << "output file: " << filename_out << std::endl;
   writer->SetFileName( filename_out.c_str() );
-  writer->SetInput( destImg );
+  caster->SetInput( destImg );
+  writer->SetInput( caster->GetOutput() );
   try {
      writer->Update();
   } catch( itk::ExceptionObject & error ) {
