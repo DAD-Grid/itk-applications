@@ -4,6 +4,7 @@
 #include "itkImageFileWriter.h"
 #include "itkPasteImageFilter.h"
 #include "itkVectorCastImageFilter.h"
+#include <itkExtractImageFilter.h>
 
 #include <iostream>
 #include <string>
@@ -12,7 +13,7 @@
 #include <cstdlib>
 #include <fstream>
 
-typedef itk::RGBPixel< float >                        PixelType;
+typedef itk::RGBPixel< unsigned char >                PixelType;
 typedef itk::Image< PixelType, 2 >                    InputImageType;
 typedef itk::ImageFileReader<InputImageType>               ReaderType;
 typedef itk::PasteImageFilter <InputImageType, InputImageType > PasteImageFilterType;
@@ -22,12 +23,12 @@ typedef itk::Image< WritePixelType, 2 >               WriteImageType;
 typedef itk::ImageFileWriter< WriteImageType >        WriterType;
 typedef itk::VectorCastImageFilter<
                     InputImageType, WriteImageType >  CasterType;
+typedef itk::ExtractImageFilter< InputImageType, InputImageType > ExactFilterType;
 
 using namespace std;
 
 static void CreateDestImage(InputImageType::Pointer image, unsigned int NumRows, unsigned int NumCols)
 {
-  // Create an image with 2 connected components
   InputImageType::RegionType region;
   InputImageType::IndexType start;
   start[0] = 0;
@@ -45,9 +46,9 @@ static void CreateDestImage(InputImageType::Pointer image, unsigned int NumRows,
 
 int main(int argc, char *argv[])
 {
-  if(argc < 6) {
+  if(argc < 7) {
     std::cerr << "Usage: ";
-    std::cerr << argv[0] << " height width numRows numCols folderPath" << std::endl;
+    std::cerr << argv[0] << " height width numRows numCols folderPath delta" << std::endl;
     return EXIT_FAILURE;
   }
 
@@ -56,6 +57,9 @@ int main(int argc, char *argv[])
   int numRows = atoi(argv[3]);
   int numCols = atoi(argv[4]);
   std::string folderPath = argv[5];
+  int delta = atoi(argv[6]);
+  if(folderPath[folderPath.size()-1] != '/')
+    folderPath += '/';
 
   InputImageType::Pointer destImg = InputImageType::New();
   CreateDestImage(destImg, height, width);
@@ -90,32 +94,57 @@ int main(int argc, char *argv[])
     int row = atoi(nameArr[1].c_str());
     int col = atoi(nameArr[2].c_str());
 
-    int singleImageHeight =  (int)(destSize[0]) / numRows;
-    int singleImageWith = (int)(destSize[1]) / numCols;
-    InputImageType::IndexType destinationIndex;
-    destinationIndex[0] = row*singleImageHeight;
-    destinationIndex[1] = col*singleImageWith;
-
-    std::cout<< "index " << destinationIndex[0] << " " << destinationIndex[1] << std::endl;
-
-
     ReaderType::Pointer reader2 = ReaderType::New();
     reader2->SetFileName(folderPath + fileName);
     reader2->Update();
 
     InputImageType::Pointer srcImage = reader2->GetOutput();
+    InputImageType::SizeType srcSize = srcImage->GetLargestPossibleRegion().GetSize();
 
+    InputImageType::IndexType cropStart;
+    
+    if(row == 0) cropStart[0] = 0;
+    else         cropStart[0] = delta; 
 
+    if(col == 0) cropStart[1] = 0;
+    else         cropStart[1] = delta;
+  
+    InputImageType::SizeType cropSize;
+    
+    if(row == numRows-1 || row == 0) cropSize[0] = srcSize[0] - delta;
+    else                             cropSize[0] = srcSize[0] - (2*delta);
+
+    if(col == numCols-1 || col == 0) cropSize[1] = srcSize[1] - delta;
+    else                             cropSize[1] = srcSize[1] - (2*delta);
+
+    InputImageType::RegionType cropRegion(cropStart, cropSize);
+    
+    ExactFilterType::Pointer exactfilter = ExactFilterType::New();
+    exactfilter->SetExtractionRegion(cropRegion);
+    exactfilter->SetInput(srcImage);
+    // exactfilter->SetDirectionCollapseToIdentity(); // This is required.
+    exactfilter->Update();    
+
+    int singleImageHeight =  (int)(destSize[0]) / numRows;
+    int singleImageWith = (int)(destSize[1]) / numCols;
+    InputImageType::IndexType destinationIndex;
+    destinationIndex[0] = row*singleImageHeight;
+    destinationIndex[1] = col*singleImageWith;
+    std::cout << "----------------delta: " << delta << std::endl;
+    // if (destinationIndex[0] != 0) destinationIndex[0] -= delta;
+    // if (destinationIndex[1] != 0) destinationIndex[1] -= delta;
+
+    std::cout<< "index " << destinationIndex[0] << " " << destinationIndex[1] << std::endl;
+    std::cout << "size " << exactfilter->GetOutput()->GetLargestPossibleRegion() << std::endl;
     pasteFilter->SetDestinationImage(destImg);
-    pasteFilter->SetSourceImage(srcImage);
-    pasteFilter->SetSourceRegion(srcImage->GetLargestPossibleRegion());
+    pasteFilter->SetSourceImage(exactfilter->GetOutput());
+    pasteFilter->SetSourceRegion(exactfilter->GetOutput()->GetLargestPossibleRegion());
     pasteFilter->SetDestinationIndex(destinationIndex);
     pasteFilter->Update();
     destImg = pasteFilter->GetOutput();
 
   }
 
-  CasterType::Pointer caster = CasterType::New();
   WriterType::Pointer writer = WriterType::New();
 
   std::string name = "destImage";
@@ -129,8 +158,7 @@ int main(int argc, char *argv[])
   ss3 >> filename_out;
   std::cout << "output file: " << filename_out << std::endl;
   writer->SetFileName( filename_out.c_str() );
-  caster->SetInput( destImg );
-  writer->SetInput( caster->GetOutput() );
+  writer->SetInput( destImg );
   try {
      writer->Update();
   } catch( itk::ExceptionObject & error ) {

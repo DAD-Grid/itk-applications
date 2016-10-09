@@ -60,16 +60,42 @@ int main(int argc, char *argv[])
   int jump_x = inSize[0] / cols;
   int jump_y = inSize[1] / rows;
   for(int i = 0; i < cols; i++) {
-    start[0] = pixel_x;
-    if(pixel_x != 0) start[0] -= delta;
+    int sizex;
+    if(i == 0) {
+        start[0] = pixel_x;
+      sizex = jump_x + delta;
+      } else if(i == cols-1) {
+        start[0] = pixel_x - delta;
+        sizex = jump_x + delta;
+      } else {
+        start[0] = pixel_x - delta;
+        sizex = jump_x + (2*delta);
+      }
+
+    std::cout << "startx " << start[0] << " end " << start[0] + sizex << std::endl;
+    std::cout << "sizex " << sizex << std::endl;
+    std::cout << std::endl;
     pixel_x += jump_x;
-    size[0] = std::min(jump_x + (2*delta), (int)inSize[0]-(int)start[0]);
+    
+    size[0] = std::min(sizex, (int)inSize[0]-(int)start[0]);
     pixel_y = 0;
     for(int j = 0; j < rows; j++) {
-      start[1] = pixel_y;
-      if(pixel_y != 0) start[1] -= 20;
+      int sizey;
+      if(j == 0) {
+        start[1] = pixel_y;
+        sizey = jump_y + delta;
+      } else if(j == rows-1) {
+        start[1] = pixel_y - delta;
+        sizey = jump_y + delta;
+      } else {
+        start[1] = pixel_y - delta;
+        sizey = jump_y + (2*delta);
+      }
+      std::cout << "starty " << start[1] << " end " << start[1] + sizey << std::endl;
+      std::cout << "sizey " << sizey << std::endl;
+      std::cout << std::endl;
       pixel_y += jump_y;
-      size[1] = std::min(jump_y + (2*delta), (int)inSize[1]-(int)start[1]);
+      size[1] = std::min(sizey, (int)inSize[1]-(int)start[1]);
 
       ImageType::RegionType desiredRegion;
       desiredRegion.SetSize(size);
