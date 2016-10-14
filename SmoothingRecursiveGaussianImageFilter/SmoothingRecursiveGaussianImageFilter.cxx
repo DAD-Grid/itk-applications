@@ -8,13 +8,13 @@
 
 int main(int argc, char * argv[])
 {
-  // Verify command line arguments
-  // if( argc < 2 )
-  // {
-  //   std::cerr << "Usage: " << std::endl;
-  //   std::cerr << argv[0] << " inputImageFile [sigma]" << std::endl;
-  //   return EXIT_FAILURE;
-  // }
+
+  if( argc < 2 )
+  {
+    std::cerr << "Usage: " << std::endl;
+    std::cerr << argv[0] << " imagePath" << std::endl;
+    return EXIT_FAILURE;
+  }
 
   double sigma = 4.0;
   // if (argc > 2)
@@ -23,7 +23,7 @@ int main(int argc, char * argv[])
   // }
 
   // std::string filename = argv[1];
-  std::string filename = "fruit1.png";
+  std::string filename = argv[1];
 
   const unsigned int Dimension = 2;
   typedef unsigned char PixelComponentType;

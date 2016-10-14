@@ -11,14 +11,27 @@
 
 int main(int argc, char *argv[])
 {
-  if(argc < 2)
-    {
+  if(argc < 3)
+  {
     std::cerr << "Usage: ";
-    std::cerr << argv[0] << " inputImageFile pathToFolder [rows] [cols]" << std::endl;
+    std::cerr << argv[0] << " inputImageFile pathToFolder [rows] [cols] [delta]" << std::endl;
     return EXIT_FAILURE;
-    }
+  }
 
   std::string filename = argv[1];
+  std::string pathToFolder(argv[2]);
+  int rows = 2;
+  int cols = 2;
+  int delta = 0;
+  if (argc > 3) {
+    rows = atoi(argv[3]);
+  }
+  if (argc > 4) {
+    cols = atoi(argv[4]);
+  }
+  if (argc > 5) {
+    delta = atoi(argv[5]);
+  }
 
   typedef itk::Image<itk::RGBPixel<unsigned char>, 2> ImageType;
   typedef itk::ImageFileReader<ImageType>             ReaderType;
@@ -33,20 +46,12 @@ int main(int argc, char *argv[])
   typedef itk::RegionOfInterestImageFilter< ImageType, ImageType > ROIFilterType;
   ROIFilterType::Pointer roiFilter = ROIFilterType::New();
 
-  int rows = 10;
-  int cols = 10;
+  
   if (argc < 3) {
     std::cerr << "too few arguments" << std::endl;
     return EXIT_FAILURE;
   }
-  std::string pathToFolder(argv[2]);
-
-  if (argc > 3) {
-    rows = atoi(argv[3]);
-  }
-  if (argc > 4) {
-    cols = atoi(argv[4]);
-  }
+  
 
   ImageType::IndexType start;
   ImageType::SizeType size;
@@ -55,14 +60,42 @@ int main(int argc, char *argv[])
   int jump_x = inSize[0] / cols;
   int jump_y = inSize[1] / rows;
   for(int i = 0; i < cols; i++) {
-    start[0] = pixel_x;
+    int sizex;
+    if(i == 0) {
+        start[0] = pixel_x;
+      sizex = jump_x + delta;
+      } else if(i == cols-1) {
+        start[0] = pixel_x - delta;
+        sizex = jump_x + delta;
+      } else {
+        start[0] = pixel_x - delta;
+        sizex = jump_x + (2*delta);
+      }
+
+    std::cout << "startx " << start[0] << " end " << start[0] + sizex << std::endl;
+    std::cout << "sizex " << sizex << std::endl;
+    std::cout << std::endl;
     pixel_x += jump_x;
-    size[0] = std::min(jump_x, (int)inSize[0]-(int)start[0]);
+    
+    size[0] = std::min(sizex, (int)inSize[0]-(int)start[0]);
     pixel_y = 0;
     for(int j = 0; j < rows; j++) {
-      start[1] = pixel_y;
+      int sizey;
+      if(j == 0) {
+        start[1] = pixel_y;
+        sizey = jump_y + delta;
+      } else if(j == rows-1) {
+        start[1] = pixel_y - delta;
+        sizey = jump_y + delta;
+      } else {
+        start[1] = pixel_y - delta;
+        sizey = jump_y + (2*delta);
+      }
+      std::cout << "starty " << start[1] << " end " << start[1] + sizey << std::endl;
+      std::cout << "sizey " << sizey << std::endl;
+      std::cout << std::endl;
       pixel_y += jump_y;
-      size[1] = std::min(jump_y, (int)inSize[1]-(int)start[1]);
+      size[1] = std::min(sizey, (int)inSize[1]-(int)start[1]);
 
       ImageType::RegionType desiredRegion;
       desiredRegion.SetSize(size);
@@ -78,10 +111,15 @@ int main(int argc, char *argv[])
 
       std::string name;
       std::stringstream ss(filename);
-      std::getline(ss, name, '.');
+      std::string onlyName = name;
+      while(std::getline(ss, onlyName, '/') != NULL) {
+      }
+      std::stringstream sss(onlyName);
+      std::cout << "onlyName " << onlyName << std::endl;
+      std::getline(sss, name, '.');
       std::cout << "name " << name << std::endl;
       std::string format;
-      std::getline(ss, format);
+      std::getline(sss, format);
 
       std::stringstream ss2;
       if(pathToFolder[pathToFolder.size()-1] != '/')

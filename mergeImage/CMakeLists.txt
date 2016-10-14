@@ -5,8 +5,5 @@ project(mergeImage)
 find_package(ITK REQUIRED)
 include(${ITK_USE_FILE})
 
-add_executable(mergeImage mergeImage.cxx)
+add_executable(mergeImage mergeImage.cpp)
 target_link_libraries(mergeImage ${ITK_LIBRARIES})
-
-add_executable(createDestImage createDestinationImage.cxx)
-target_link_libraries(createDestImage ${ITK_LIBRARIES})
